@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import sqlite3
@@ -8,7 +9,8 @@ from typing import Optional
 import httpx
 from openai import AsyncOpenAI
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters\nfrom monitor import monitor_loop
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from monitor import monitor_loop
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -25,6 +27,9 @@ GH_TOKEN = os.getenv("GH_TOKEN", "").strip()
 GH_REPO = os.getenv("GH_REPO", "").strip()
 RENDER_API_KEY = os.getenv("RENDER_API_KEY", "").strip()
 RENDER_SERVICE_ID = os.getenv("RENDER_SERVICE_ID", "").strip()
+MONITOR_RENDER_SERVICE_IDS = [x.strip() for x in os.getenv("MONITOR_RENDER_SERVICE_IDS", "").split(",") if x.strip()]
+MONITOR_INTERVAL_SECONDS = max(60, int(os.getenv("MONITOR_INTERVAL_SECONDS", "120")))
+MONITOR_TASK = None
 DB_PATH = os.getenv("DB_PATH", "/data/assistant.sqlite3")
 
 if not BOT_TOKEN:
@@ -292,12 +297,37 @@ def main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_cmd))
-    app.add_handler(CommandHandler("status", status_cmd))\n    app.add_handler(CommandHandler("monitor", monitor_cmd))
+    app.add_handler(CommandHandler("status", status_cmd))
+    app.add_handler(CommandHandler("monitor", monitor_cmd))
     app.add_handler(CommandHandler("deploy", deploy_cmd))
     app.add_handler(CommandHandler("repo", repo_cmd))
     app.add_handler(CommandHandler("remember", remember_cmd))
     app.add_handler(CommandHandler("memory", memory_cmd))
     app.add_handler(CommandHandler("clearhistory", clearhistory_cmd))
+    async def post_init(application):
+        global MONITOR_TASK
+        ids = MONITOR_RENDER_SERVICE_IDS or ([RENDER_SERVICE_ID] if RENDER_SERVICE_ID else [])
+        if RENDER_API_KEY and ids:
+            MONITOR_TASK = asyncio.create_task(
+                monitor_loop(application.bot, ids, RENDER_API_KEY, OWNER_ID,
+                             interval_seconds=MONITOR_INTERVAL_SECONDS, ai_client=client,
+                             ai_model=AI_MODEL, ai_base_url=AI_BASE_URL)
+            )
+            log.info("Render monitor started for %d service(s)", len(ids))
+        else:
+            log.info("Render monitor disabled: configure RENDER_API_KEY and MONITOR_RENDER_SERVICE_IDS")
+
+    async def post_shutdown(application):
+        global MONITOR_TASK
+        if MONITOR_TASK:
+            MONITOR_TASK.cancel()
+            try:
+                await MONITOR_TASK
+            except asyncio.CancelledError:
+                pass
+
+    app.post_init = post_init
+    app.post_shutdown = post_shutdown
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
     log.info("Telegram Project Assistant starting")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
