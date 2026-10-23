@@ -54,3 +54,8 @@ cp .env.example .env
 # Fill values in .env, then export them into your shell
 python bot.py
 ```
+
+
+## Continuous Render monitoring
+
+Set `RENDER_API_KEY` and `MONITOR_RENDER_SERVICE_IDS` (comma-separated Render service IDs). The monitor checks every `MONITOR_INTERVAL_SECONDS` seconds (minimum 60; default 120), alerts the owner in Telegram when the latest deploy is failed/canceled/deactivated or a service is suspended, and sends a recovery alert when the condition clears. `/monitor` reports current service and latest-deploy status. When `AI_API_KEY` is configured, available log excerpts are sent for a short Arabic diagnosis and proposed fix; otherwise rule-based hints are used. Log retrieval depends on the Render API access available to the account; if logs cannot be fetched, the alert says so and the Render dashboard Logs tab remains the fallback. Monitoring only covers the Render service IDs configured here; it does not directly monitor arbitrary Telegram bots or services on other hosts.
