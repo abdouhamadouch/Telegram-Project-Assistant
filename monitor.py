@@ -9,8 +9,8 @@ import httpx
 
 log = logging.getLogger("project-assistant.monitor")
 SECRET_PATTERNS = [
-    re.compile(r"(?i)(token|api[_-]?key|password|secret|authorization)(\\s*[:=]\\s*)[^\\s,;]+"),
-    re.compile(r"(?i)Bearer\\s+[A-Za-z0-9._~+/-]+=*"),
+    re.compile(r"(?i)(token|api[_-]?key|password|secret|authorization)(\s*[:=]\s*)[^\s,;]+"),
+    re.compile(r"(?i)Bearer\s+[A-Za-z0-9._~+/-]+=*"),
 ]
 
 def redact(text: str) -> str:
