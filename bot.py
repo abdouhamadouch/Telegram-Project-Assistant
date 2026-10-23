@@ -8,7 +8,7 @@ from typing import Optional
 import httpx
 from openai import AsyncOpenAI
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters\nfrom monitor import monitor_loop
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -292,7 +292,7 @@ def main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_cmd))
-    app.add_handler(CommandHandler("status", status_cmd))
+    app.add_handler(CommandHandler("status", status_cmd))\n    app.add_handler(CommandHandler("monitor", monitor_cmd))
     app.add_handler(CommandHandler("deploy", deploy_cmd))
     app.add_handler(CommandHandler("repo", repo_cmd))
     app.add_handler(CommandHandler("remember", remember_cmd))
