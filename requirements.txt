@@ -1,0 +1,3 @@
+python-telegram-bot==22.5
+httpx>=0.27,<1
+openai>=1.50,<3
