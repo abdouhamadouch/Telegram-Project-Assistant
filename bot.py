@@ -149,6 +149,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "مساعد إدارة المشاريع جاهز.\n\n"
         "/help — الأوامر\n"
         "/status — حالة خدمة Render\n"
+        "/monitor — حالة الخدمات المراقبة\n"
         "/deploy — طلب نشر جديد\n"
         "/repo — معلومات مستودع GitHub\n"
         "/remember نص — حفظ معلومة للمشروع\n"
@@ -183,6 +184,28 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         log.exception("Render status failed")
         await update.effective_message.reply_text(f"تعذر جلب الحالة: {str(exc)[:500]}")
 
+
+@owner_only
+async def monitor_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    ids = MONITOR_RENDER_SERVICE_IDS or ([RENDER_SERVICE_ID] if RENDER_SERVICE_ID else [])
+    if not ids:
+        await update.effective_message.reply_text("أضف MONITOR_RENDER_SERVICE_IDS كقائمة معرّفات خدمات Render مفصولة بفواصل.")
+        return
+    try:
+        lines = []
+        for service_id in ids:
+            service = await render_request("GET", f"/services/{service_id}")
+            deploys = await render_request("GET", f"/services/{service_id}/deploys?limit=1")
+            latest = deploys[0].get("deploy", deploys[0]) if deploys else {}
+            lines.append(
+                f"• {service.get('name', service_id)} ({service_id})\n"
+                f"  الإيقاف: {service.get('suspended', 'غير معروف')}\n"
+                f"  آخر نشر: {latest.get('status', 'لا توجد بيانات')}"
+            )
+        await update.effective_message.reply_text("حالة خدمات Render:\n\n" + "\n\n".join(lines))
+    except Exception as exc:
+        log.exception("Monitor status command failed")
+        await update.effective_message.reply_text(f"تعذر جلب حالة المراقبة: {str(exc)[:400]}")
 
 @owner_only
 async def deploy_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
